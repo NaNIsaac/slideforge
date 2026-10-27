@@ -24,7 +24,10 @@ def env(tmp_path):
     (source / "Plain-Regular.otf").write_bytes(font)
     with zipfile.ZipFile(source / "zipped.zip", "w") as z:
         z.writestr("inside/Zipped-Regular.otf", font)
-    sha = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
+
+    def sha(p):
+        return hashlib.sha256(p.read_bytes()).hexdigest()
+
     manifest = {
         "fonts": [
             {"name": "Plain Math", "version": "1.0", "license": "OFL-1.1",
