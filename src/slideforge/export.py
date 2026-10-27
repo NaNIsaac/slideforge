@@ -47,6 +47,16 @@ def powerpoint_available() -> bool:
     return True
 
 
+def powerpoint_running() -> bool:
+    """Whether a PowerPoint process exists, which an export would share."""
+    if sys.platform != "win32":
+        return False
+    done = subprocess.run(
+        ["tasklist", "/FI", "IMAGENAME eq POWERPNT.EXE", "/NH"], check=False, capture_output=True, text=True
+    )
+    return "POWERPNT.EXE" in done.stdout.upper()
+
+
 def soffice() -> str | None:
     return shutil.which("soffice") or shutil.which("libreoffice")
 

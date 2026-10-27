@@ -1,9 +1,10 @@
 import base64
+import os
 
 import pytest
 
 from slideforge import omml, tex
-from slideforge.export import powerpoint_available
+from slideforge.export import powerpoint_available, powerpoint_running
 
 # 1x1 transparent PNG
 PNG = base64.b64decode(
@@ -16,4 +17,10 @@ needs_office_math = pytest.mark.skipif(
     reason="MML2OMML.XSL (Microsoft Office) not found",
 )
 needs_tex = pytest.mark.skipif(not tex.available(), reason="xelatex or pdftocairo not on PATH")
-needs_powerpoint = pytest.mark.skipif(not powerpoint_available(), reason="PowerPoint not installed")
+
+# PowerPoint runs one instance per user, so a test would share the window of someone working in
+# PowerPoint; the tests drive it only when asked to and when no one else has it open.
+needs_powerpoint = pytest.mark.skipif(
+    os.environ.get("SLIDEFORGE_COM") != "1" or not powerpoint_available() or powerpoint_running(),
+    reason="PowerPoint tests run with SLIDEFORGE_COM=1, PowerPoint installed and not already running",
+)
