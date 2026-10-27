@@ -43,7 +43,7 @@ def render(latex: str, *, font: str = "STIX Two Math") -> tuple[bytes, bytes, fl
     with tempfile.TemporaryDirectory() as tmp:
         work = Path(tmp)
         (work / "eq.tex").write_text(
-            "\\documentclass[border=0.5pt]{standalone}\n\\usepackage{unicode-math}\n"
+            "\\documentclass[border=0.5pt]{standalone}\n\\usepackage[mathrm=sym,mathbf=sym]{unicode-math}\n"
             f"\\setmathfont{{{FONT_FILES.get(font, font)}}}\n"
             f"\\begin{{document}}$\\displaystyle {latex}$\\end{{document}}\n",
             encoding="utf-8",
