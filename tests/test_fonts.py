@@ -1,10 +1,16 @@
-"""fonts.ps1 against a made-up font in a temp folder: no download, no registry, no real fonts."""
+"""fonts.ps1 against a made-up font in a temp folder: no download and no real fonts.
+
+On Windows the registry values go to a temporary key under HKCU that already holds values of its
+own, so the code path that writes the real font key is the one under test (#5); elsewhere they go
+to a JSON file."""
 
 import hashlib
 import json
 import re
 import shutil
 import subprocess
+import sys
+import uuid
 import zipfile
 from pathlib import Path
 
@@ -14,6 +20,9 @@ SCRIPT = Path(__file__).resolve().parents[1] / "fonts" / "fonts.ps1"
 SHELL = shutil.which("pwsh")
 
 pytestmark = pytest.mark.skipif(SHELL is None, reason="PowerShell 7 (pwsh) not on PATH")
+WINDOWS = sys.platform == "win32"
+# Values another program put in the key before the script ran; every test checks they survive.
+OTHERS = {"Someone Sans (TrueType)": r"C:\fonts\SomeoneSans.ttf", "Other Serif (OpenType)": "OtherSerif.otf"}
 
 
 @pytest.fixture
@@ -40,14 +49,30 @@ def env(tmp_path):
         ]
     }  # fmt: skip
     (tmp_path / "fonts.json").write_text(json.dumps(manifest))
-    return tmp_path
+    if not WINDOWS:
+        yield tmp_path
+        return
+    import winreg
+
+    sub = rf"Software\slideforge-test-{uuid.uuid4().hex}"
+    with winreg.CreateKey(winreg.HKEY_CURRENT_USER, sub) as key:
+        for name, value in OTHERS.items():
+            winreg.SetValueEx(key, name, 0, winreg.REG_SZ, value)
+    (tmp_path / "key.txt").write_text(sub)
+    try:
+        yield tmp_path
+    finally:
+        winreg.DeleteKey(winreg.HKEY_CURRENT_USER, sub)
 
 
 def run(env, *args):
     cmd = [SHELL, "-NoProfile", "-NonInteractive", "-File", str(SCRIPT), *args,
            "-Manifest", str(env / "fonts.json"), "-FontDir", str(env / "Fonts"),
-           "-RegistryFile", str(env / "registry.json"), "-State", str(env / "state.json"),
-           "-Source", str(env / "source")]  # fmt: skip
+           "-State", str(env / "state.json"), "-Source", str(env / "source")]  # fmt: skip
+    if WINDOWS:
+        cmd += ["-RegistryKey", "HKCU:\\" + (env / "key.txt").read_text()]
+    else:
+        cmd += ["-RegistryFile", str(env / "registry.json")]
     done = subprocess.run(cmd, check=False, capture_output=True, text=True)
     # PowerShell colours and wraps error messages to the console width.
     out = re.sub(r"\x1b\[[0-9;]*m", "", done.stdout + done.stderr)
@@ -55,14 +80,32 @@ def run(env, *args):
 
 
 def registry(env) -> dict:
-    path = env / "registry.json"
-    return json.loads(path.read_text(encoding="utf-8-sig")) if path.exists() else {}
+    """Values the script wrote, without the ones that were there before it."""
+    if not WINDOWS:
+        path = env / "registry.json"
+        return json.loads(path.read_text(encoding="utf-8-sig")) if path.exists() else {}
+    import winreg
+
+    values = {}
+    with winreg.OpenKey(winreg.HKEY_CURRENT_USER, (env / "key.txt").read_text()) as key:
+        i = 0
+        while True:
+            try:
+                name, value, _ = winreg.EnumValue(key, i)
+            except OSError:
+                break
+            values[name] = value
+            i += 1
+    for name, value in OTHERS.items():
+        assert values.pop(name) == value, f"{name} was changed or removed"
+    return values
 
 
-def test_whatif_writes_nothing(env):
+def test_whatif_writes_nothing_and_names_the_registry_value(env):
     code, out = run(env, "install", "-WhatIf")
     assert code == 0, out
     assert not (env / "Fonts").exists() and registry(env) == {}
+    assert "registry value 'Plain Math (OpenType)'" in out
 
 
 def test_install_then_remove_restores(env):
