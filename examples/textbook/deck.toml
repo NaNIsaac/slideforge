@@ -1,0 +1,51 @@
+# slideforge build examples/textbook/deck.toml
+
+[deck]
+font = "Aptos"
+size = 20
+
+[math]
+route = "omml"
+size = 24
+
+[export]
+pdf = true
+png = true
+png_width = 1600
+
+[[slide]]
+title = "Waves and Fields: a sample deck"
+[[slide.item]]
+text = "Textbook equations as editable Office math, and a figure drawn from one of them"
+
+[[slide]]
+title = "Maxwell's equations"
+[[slide.item]]
+math = '\nabla\cdot\mathbf{E} = \frac{\rho}{\varepsilon_0}'
+[[slide.item]]
+math = '\nabla\cdot\mathbf{B} = 0'
+[[slide.item]]
+math = '\nabla\times\mathbf{E} = -\frac{\partial\mathbf{B}}{\partial t}'
+[[slide.item]]
+math = '\nabla\times\mathbf{B} = \mu_0\mathbf{J} + \mu_0\varepsilon_0\frac{\partial\mathbf{E}}{\partial t}'
+
+[[slide]]
+title = "Particle in a box"
+[[slide.item]]
+math = 'i\hbar\frac{\partial\psi}{\partial t} = -\frac{\hbar^2}{2m}\nabla^2\psi + V\psi'
+[[slide.item]]
+text = "Infinite well of width L:"
+[[slide.item]]
+math = '\psi_n(x) = \sqrt{\frac{2}{L}}\sin\frac{n\pi x}{L}, \qquad E_n = \frac{n^2\pi^2\hbar^2}{2mL^2}'
+
+[[slide]]
+title = "Bessel functions"
+[[slide.item]]
+math = 'e^{iz\sin\theta} = \sum_{n=-\infty}^{\infty} J_n(z)\,e^{in\theta}'
+[[slide.item]]
+math = 'J_n(x) = \frac{1}{\pi}\int_0^\pi \cos(n\tau - x\sin\tau)\,d\tau'
+route = "tex"
+size = 22
+[[slide.item]]
+figure = "bessel.svg"
+width = 7
