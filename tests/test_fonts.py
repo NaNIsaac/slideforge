@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import re
 import shutil
 import subprocess
 import zipfile
@@ -45,7 +46,9 @@ def run(env, *args):
            "-RegistryFile", str(env / "registry.json"), "-State", str(env / "state.json"),
            "-Source", str(env / "source")]  # fmt: skip
     done = subprocess.run(cmd, check=False, capture_output=True, text=True)
-    return done.returncode, done.stdout + done.stderr
+    # PowerShell colours and wraps error messages to the console width.
+    out = re.sub(r"\x1b\[[0-9;]*m", "", done.stdout + done.stderr)
+    return done.returncode, re.sub(r"\s*\n\s*\|\s*", " ", out)
 
 
 def registry(env) -> dict:
