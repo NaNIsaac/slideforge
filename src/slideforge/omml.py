@@ -34,6 +34,7 @@ SPACES = {" ": 0.167, " ": 0.25, " ": 0.333, " ": 0.5}
 OFFICE_ROOTS = ("Program Files", "Program Files (x86)")
 
 
+@cache
 def stylesheet() -> Path | None:
     """MML2OMML.XSL from the MML2OMML variable or the Office installation, else None."""
     if env := os.environ.get("MML2OMML"):
@@ -97,21 +98,42 @@ def apply_functions(root: etree._Element) -> None:
     """latex2mathml writes \\sin as a bare <mi>sin</mi>, which the stylesheet turns into plain
     text, so PowerPoint sets "sinx". The stylesheet builds an m:func only from a row that opens
     with the name and an ApplyFunction operator, so the name, U+2061 and the argument get a row
-    of their own."""
+    of their own. The name may carry a script (\\sin^2 x, \\log_2 n); a bracketed argument is
+    taken up to its closing bracket (\\sin(x+y))."""
     for name in list(root.iter(_m("mi"))):
         if name.text not in FUNCTIONS:
             continue
-        after = name.getnext()
+        parent = name.getparent()
+        head = parent if parent.tag in SCRIPTS and parent[0] is name else name
+        after = head.getnext()
         if after is not None and after.tag == _m("mo") and after.text == "⁡":
-            after = after.getnext()
+            after.getparent().remove(after)
+            after = head.getnext()
         if after is None:
             continue
+        argument, depth = [], 0
+        while after is not None:
+            argument.append(after)
+            depth += _fence(after)
+            if depth <= 0:
+                break
+            after = after.getnext()
         group = etree.Element(_m("mrow"))
-        name.addprevious(group)
+        head.addprevious(group)
+        group.append(head)
         apply = etree.SubElement(group, _m("mo"))
         apply.text = "⁡"
-        group.insert(0, name)
-        group.append(after)
+        if len(argument) == 1:
+            group.append(argument[0])
+            continue
+        row = etree.SubElement(group, _m("mrow"))
+        row.extend(argument)
+        if len(argument) > 3 and _fence(argument[0]) == 1:
+            # The stylesheet reads a bracketed row's operators as separators, (x | y) for (x+y),
+            # unless the inside is a row of its own.
+            inner = etree.Element(_m("mrow"))
+            argument[0].addnext(inner)
+            inner.extend(argument[1:-1])
 
 
 def _fence(node: etree._Element) -> int:
@@ -174,9 +196,13 @@ def _extent(node: etree._Element) -> tuple[float, float]:
     return max(k[0] for k in kids), max(k[1] for k in kids)
 
 
-def height_pt(latex: str, size_pt: float) -> float:
-    """The rendered height of `latex` at `size_pt`, an estimate."""
-    above, below = _extent(mathml(latex))
+def _tree(latex: str | etree._Element) -> etree._Element:
+    return mathml(latex) if isinstance(latex, str) else latex
+
+
+def height_pt(latex: str | etree._Element, size_pt: float) -> float:
+    """The rendered height of `latex` (LaTeX or its `mathml`) at `size_pt`, an estimate."""
+    above, below = _extent(_tree(latex))
     return (above + below) * size_pt * 1.15 + 7.2
 
 
@@ -214,14 +240,20 @@ def split_bold(math: etree._Element) -> None:
                 if rpr is None:
                     rpr = etree.Element(q("m:rPr"))
                     new.insert(0, rpr)
-                etree.SubElement(rpr, q("m:sty"), {q("m:val"): "b"})
+                sty = rpr.find(q("m:sty"))
+                if sty is None:
+                    # m:sty comes after m:lit and m:scr in m:rPr
+                    sty = etree.Element(q("m:sty"))
+                    before = [rpr.find(q(t)) for t in ("m:lit", "m:scr")]
+                    rpr.insert(max((rpr.index(e) + 1 for e in before if e is not None), default=0), sty)
+                sty.set(q("m:val"), "b")
             run.addprevious(new)
         run.getparent().remove(run)
 
 
-def omml(latex: str, *, font: str = "Cambria Math", size_pt: float = 24) -> etree._Element:
-    """LaTeX -> an m:oMath element whose runs carry PowerPoint run properties."""
-    math = _transform()(mathml(latex)).getroot()
+def omml(latex: str | etree._Element, *, font: str = "Cambria Math", size_pt: float = 24) -> etree._Element:
+    """LaTeX (or its `mathml`) -> an m:oMath element whose runs carry PowerPoint run properties."""
+    math = _transform()(_tree(latex)).getroot()
     if math.tag == q("m:oMathPara"):
         math = math.find(q("m:oMath"))
     for rpr in list(math.iter(q("w:rPr"))):
@@ -239,7 +271,8 @@ def omml(latex: str, *, font: str = "Cambria Math", size_pt: float = 24) -> etre
 def add_equation(slide, latex: str, *, font: str, size_pt: float, left, top, width):
     """A text box holding `latex` as one left-aligned display equation; the LaTeX source is the
     fallback text for viewers without Office math."""
-    shape = slide.shapes.add_textbox(left, top, width, Pt(height_pt(latex, size_pt)))
+    tree = mathml(latex)
+    shape = slide.shapes.add_textbox(left, top, width, Pt(height_pt(tree, size_pt)))
     frame = shape.text_frame
     frame.word_wrap = True
     paragraph = frame.paragraphs[0]._p
@@ -247,7 +280,7 @@ def add_equation(slide, latex: str, *, font: str, size_pt: float, left, top, wid
     choice = etree.SubElement(alt, q("mc:Choice"), Requires="a14", nsmap={"a14": NS["a14"]})
     para = etree.SubElement(etree.SubElement(choice, q("a14:m")), q("m:oMathPara"), nsmap={"m": NS["m"]})
     etree.SubElement(etree.SubElement(para, q("m:oMathParaPr")), q("m:jc"), {q("m:val"): "left"})
-    para.append(omml(latex, font=font, size_pt=size_pt))
+    para.append(omml(tree, font=font, size_pt=size_pt))
     fallback = etree.SubElement(etree.SubElement(alt, q("mc:Fallback")), q("a:r"))
     etree.SubElement(fallback, q("a:rPr"), lang="en-US", sz=str(round(size_pt * 100)))
     etree.SubElement(fallback, q("a:t")).text = latex

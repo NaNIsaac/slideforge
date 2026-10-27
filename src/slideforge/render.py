@@ -12,6 +12,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import warnings
 from pathlib import Path
 
 POWERSHELL = r"""
@@ -25,7 +26,7 @@ try {
         if ($Pdf) { $prs.SaveAs($Pdf, 32) }
         if ($PngDir) {
             foreach ($s in $prs.Slides) {
-                $s.Export((Join-Path $PngDir ('slide{0:d2}.png' -f $s.SlideIndex)), 'PNG', $Width, $Height)
+                $s.Export((Join-Path $PngDir ('slide{0:d3}.png' -f $s.SlideIndex)), 'PNG', $Width, $Height)
             }
         }
     } finally { $prs.Close() }
@@ -82,7 +83,7 @@ def export(
         return _powerpoint(pptx, pdf, png_dir, png_width)
     if engine == "libreoffice":
         if png_dir:
-            raise ValueError("PNG export needs PowerPoint")
+            warnings.warn("slide PNGs need PowerPoint; writing the PDF only", stacklevel=2)
         return _libreoffice(pptx, pdf) if pdf else []
     raise ValueError(f"engine must be 'powerpoint', 'libreoffice' or 'auto', not {engine!r}")
 
@@ -102,26 +103,20 @@ def _powerpoint(pptx: Path, pdf, png_dir, png_width: int) -> list[Path]:
         folder = Path(png_dir).resolve() if png_dir else None
         if folder:
             folder.mkdir(parents=True, exist_ok=True)
+            # A longer deck exported here before would leave slides this one does not have.
+            for old in folder.glob("slide*.png"):
+                if old.stem.removeprefix("slide").isdigit():
+                    old.unlink()
         if target:
             target.parent.mkdir(parents=True, exist_ok=True)
+        # Windows PowerShell 5.1 drops empty arguments, which shifts the ones after them.
+        args = ["-Deck", str(copy), "-Width", str(png_width), "-Height", str(height)]
+        if target:
+            args += ["-Pdf", str(target)]
+        if folder:
+            args += ["-PngDir", str(folder)]
         done = subprocess.run(
-            [
-                _shell(),
-                "-NoProfile",
-                "-NonInteractive",
-                "-File",
-                str(script),
-                "-Deck",
-                str(copy),
-                "-Pdf",
-                str(target or ""),
-                "-PngDir",
-                str(folder or ""),
-                "-Width",
-                str(png_width),
-                "-Height",
-                str(height),
-            ],
+            [_shell(), "-NoProfile", "-NonInteractive", "-File", str(script), *args],
             check=False,
             capture_output=True,
             text=True,
@@ -131,7 +126,7 @@ def _powerpoint(pptx: Path, pdf, png_dir, png_width: int) -> list[Path]:
             raise RuntimeError(f"PowerPoint export failed:\n{done.stderr[-2000:]}")
     written = [target] if target else []
     if folder:
-        written += sorted(folder.glob("slide*.png"))
+        written += [folder / f"slide{i:03d}.png" for i in range(1, len(prs.slides) + 1)]
     return written
 
 

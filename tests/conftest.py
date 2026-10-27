@@ -4,7 +4,7 @@ import os
 import pytest
 
 from slideforge import omml, tex
-from slideforge.export import powerpoint_available, powerpoint_running
+from slideforge.render import powerpoint_available, powerpoint_running
 
 # 1x1 transparent PNG
 PNG = base64.b64decode(

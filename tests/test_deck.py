@@ -57,3 +57,25 @@ def test_tex_equation_is_svg(tmp_path):
     config = Config.from_dict({"math": {"route": "tex"}, "slide": [{"item": [{"math": "E=mc^2"}]}]})
     files = parts(build(config, tmp_path / "t.pptx"))
     assert any(name.endswith(".svg") for name in files)
+
+
+@pytest.mark.parametrize(
+    "spec",
+    [
+        {"titel": "A"},
+        {"item": [{"text": "a", "widht": 3}]},
+        {"item": [{"math": "x", "fallback": "y.png"}]},
+        {"item": [{"text": "a", "math": "x"}]},
+    ],
+)
+def test_misspelt_keys_are_errors(spec):
+    with pytest.raises(ValueError):
+        Deck().add(spec)
+
+
+def test_wrapped_text_pushes_the_next_item_down():
+    deck = Deck()
+    slide = deck.slide()
+    long = deck.text(slide, "word " * 80, width=4)
+    short = deck.text(deck.slide(), "word", width=4)
+    assert long.height > 3 * short.height

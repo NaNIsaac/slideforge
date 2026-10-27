@@ -42,3 +42,18 @@ def test_runs_carry_font_and_size():
 
 def test_root_is_one_equation():
     assert omml("x=1").tag == q("m:oMath")
+
+
+def test_bold_replaces_an_existing_style():
+    from lxml import etree
+
+    from slideforge.omml import split_bold
+
+    math = etree.Element(q("m:oMath"))
+    run = etree.SubElement(math, q("m:r"))
+    rpr = etree.SubElement(run, q("m:rPr"))
+    etree.SubElement(rpr, q("m:sty"), {q("m:val"): "p"})
+    etree.SubElement(run, q("m:t")).text = "a\U0001d410"
+    split_bold(math)
+    styles = [[s.get(q("m:val")) for s in r.iter(q("m:sty"))] for r in math.iter(q("m:r"))]
+    assert styles == [["p"], ["b"]]
