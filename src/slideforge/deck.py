@@ -27,6 +27,11 @@ from .picture import add_svg, fit
 
 MARGIN = 0.6
 GAP = 0.15
+# Average glyph width of a proportional sans font, in em, to guess where text wraps.
+CHAR_EM = 0.5
+SLIDE_KEYS = {"title", "item"}
+ITEM_KEYS = {"text": {"size", "bold"}, "math": {"route", "size"}, "figure": {"fallback", "height"}}
+PLACE_KEYS = {"left", "top", "width"}
 
 
 def add_equation(
@@ -126,7 +131,9 @@ class Deck:
         left, top, width = self._place(slide, left, top, width)
         size = size or self.config.deck.size
         lines = text.split("\n")
-        box = slide.shapes.add_textbox(Inches(left), Inches(top), Inches(width), Pt(size * 1.3 * len(lines)))
+        per_line = max(1, int(width * 72 / (size * CHAR_EM)))
+        rows = sum(max(1, -(-len(line) // per_line)) for line in lines)
+        box = slide.shapes.add_textbox(Inches(left), Inches(top), Inches(width), Pt(size * 1.3 * rows))
         frame = box.text_frame
         frame.word_wrap = True
         for i, line in enumerate(lines):
@@ -197,19 +204,24 @@ class Deck:
 
     def add(self, spec: dict) -> object:
         """A slide from one [[slide]] table."""
+        if extra := set(spec) - SLIDE_KEYS:
+            raise ValueError(f"unknown keys in [[slide]]: {', '.join(sorted(extra))}")
         slide = self.slide(spec.get("title", ""))
         for item in spec.get("item", []):
+            kinds = [k for k in ITEM_KEYS if k in item]
+            if len(kinds) != 1:
+                raise ValueError(f"slide item needs one of text, math or figure: {item}")
+            if extra := set(item) - {kinds[0]} - ITEM_KEYS[kinds[0]] - PLACE_KEYS:
+                raise ValueError(f"unknown keys in {kinds[0]} item: {', '.join(sorted(extra))}")
             where = {k: item[k] for k in ("left", "top", "width") if k in item}
             if "text" in item:
                 self.text(slide, item["text"], size=item.get("size"), bold=item.get("bold", False), **where)
             elif "math" in item:
                 self.math(slide, item["math"], route=item.get("route"), size=item.get("size"), **where)
-            elif "figure" in item:
+            else:
                 self.figure(
                     slide, item["figure"], fallback=item.get("fallback"), height=item.get("height"), **where
                 )
-            else:
-                raise ValueError(f"slide item needs text, math or figure: {item}")
         return slide
 
     def save(self, path: str | Path) -> Path:

@@ -5,7 +5,7 @@ from pathlib import Path
 
 from .config import Config
 from .deck import Deck, build
-from .export import export
+from .render import export
 
 
 def _build(args) -> list[Path]:

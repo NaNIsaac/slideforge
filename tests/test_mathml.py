@@ -55,3 +55,24 @@ def test_height_grows_with_fractions_and_limits():
     fraction = height_pt(r"x = \frac{a}{b}", 24)
     limits = height_pt(r"\sum_{n=0}^{\infty} x^n", 24)
     assert plain < fraction < limits
+
+
+def function_rows(latex: str) -> list[etree._Element]:
+    """Rows the function adjustment made: name (or scripted name), U+2061, argument."""
+    return [row for row in mathml(latex).iter(f"{{{MATHML}}}mrow") if len(row) == 3 and row[1].text == "⁡"]
+
+
+def test_scripted_function_name_keeps_its_script():
+    for latex, script in ((r"\sin^2 x", "msup"), (r"\log_2 n", "msub"), (r"\cos^2\theta", "msup")):
+        (row,) = function_rows(latex)
+        assert etree.QName(row[0]).localname == script and len(row[0]) == 2, latex
+        assert "".join(row[2].itertext()) in ("x", "n", "θ")
+
+
+def test_bracketed_argument_is_taken_whole():
+    (row,) = function_rows(r"\sin(x+y) + 1")
+    assert "".join(row[2].itertext()) == "(x+y)"
+
+
+def test_function_argument_inside_a_sum():
+    assert "sin⁡(nx)" in rows(r"\sum_n \sin(nx) + 1")
