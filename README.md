@@ -74,6 +74,24 @@ stylesheet, and corrects where PowerPoint would set it differently from TeX: fun
 (`\sin x`), the operand of sums and integrals (`\sum_n J_n(S)`), bold letters, upright capital
 Greek and nabla, and `\,` or `\qquad` spaces.
 
+## Math fonts
+
+PowerPoint sets Office math in fonts installed in Windows, which ships one math font, Cambria
+Math. `fonts/fonts.ps1` installs open-licensed math fonts for the current user, without admin
+rights, from pinned downloads checked by SHA-256 ([`fonts/fonts.json`](fonts/fonts.json): Fira
+Math, Noto Sans Math, GFS Neohellenic Math, Lete Sans Math). `remove` undoes only what `install`
+did. Restart PowerPoint after installing.
+
+```powershell
+fonts/fonts.ps1 list
+fonts/fonts.ps1 install -Font 'Fira Math' -WhatIf
+fonts/fonts.ps1 install -Font 'Fira Math'
+fonts/fonts.ps1 remove -Font 'Fira Math'
+```
+
+Then set `font = "Fira Math"` under `[math]`. The `tex` route needs no installation for fonts
+that the TeX distribution has, and `tex_font` can name any font file xelatex finds.
+
 ## License
 
 MIT, see [LICENSE](LICENSE).
