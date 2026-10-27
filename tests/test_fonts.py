@@ -81,7 +81,7 @@ def test_font_installed_by_someone_else_is_left_alone(env):
 def test_wrong_hash_is_refused(env):
     (env / "source" / "Plain-Regular.otf").write_bytes(b"changed")
     code, out = run(env, "install", "-Font", "Plain Math")
-    assert code != 0 and "SHA-256" in out
+    assert code != 0 and "check the new SHA-256" in out
     assert not (env / "Fonts" / "Plain-Regular.otf").exists()
 
 

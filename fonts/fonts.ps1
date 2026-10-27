@@ -65,7 +65,7 @@ function Set-Registered([string]$Name, $Value) {
 function Assert-Hash([string]$Path, [string]$Expected, [string]$What) {
     $actual = (Get-FileHash $Path -Algorithm SHA256).Hash
     if ($actual -ne $Expected.ToUpperInvariant()) {
-        throw "$What`: SHA-256 $actual, expected $Expected; not installed"
+        throw "$What`: SHA-256 $actual, expected $Expected; not installed. The download changed: check the new SHA-256 at the source before updating fonts.json"
     }
 }
 
