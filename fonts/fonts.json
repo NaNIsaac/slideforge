@@ -1,0 +1,44 @@
+{
+  "fonts": [
+    {
+      "name": "Fira Math",
+      "version": "0.3.4",
+      "license": "OFL-1.1",
+      "url": "https://github.com/firamath/firamath/releases/download/v0.3.4/FiraMath-Regular.otf",
+      "sha256": "2028cbd3dd4d8c0cf1608520eb4759956a83a67931d7b6d8e7c313520186e35b",
+      "file": "FiraMath-Regular.otf",
+      "face": "Fira Math Regular"
+    },
+    {
+      "name": "Noto Sans Math",
+      "version": "3.000",
+      "license": "OFL-1.1",
+      "url": "https://github.com/notofonts/math/releases/download/NotoSansMath-v3.000/NotoSansMath-v3.000.zip",
+      "sha256": "ac351837b41f8a897f020b97fb0f075ad574c1e9669fb5839ada1f92fd748356",
+      "member": "NotoSansMath/full/otf/NotoSansMath-Regular.otf",
+      "member_sha256": "9dda7e17fa67b7e34083798f56faf5e53ac524456e730ead35c2957e4397ca28",
+      "file": "NotoSansMath-Regular.otf",
+      "face": "Noto Sans Math Regular"
+    },
+    {
+      "name": "GFS Neohellenic Math",
+      "version": "1.02",
+      "license": "OFL-1.1",
+      "url": "https://mirrors.ctan.org/fonts/gfsneohellenicmath.zip",
+      "sha256": "dacda971e79c0d930a3b96f3d09fe5a0b26368acb82380b4ba67e7d3b3290854",
+      "member": "gfsneohellenicmath/GFSNeohellenicMath.otf",
+      "member_sha256": "79085008b8ed08d0ed4b35a9d7497f2f052cc10edb2baf262be91b55b0ef46fc",
+      "file": "GFSNeohellenicMath.otf",
+      "face": "GFS Neohellenic Math"
+    },
+    {
+      "name": "Lete Sans Math",
+      "version": "0.63",
+      "license": "OFL-1.1",
+      "url": "https://github.com/abccsss/LeteSansMath/releases/download/v0.63/LeteSansMath.otf",
+      "sha256": "8e6f7468e12c19668943e71353f8ae0769682547146f11f3471da6f5f9db68b6",
+      "file": "LeteSansMath.otf",
+      "face": "Lete Sans Math"
+    }
+  ]
+}
