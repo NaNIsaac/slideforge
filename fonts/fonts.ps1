@@ -9,8 +9,9 @@ Windows does when a user without admin rights installs a font. A record of what 
 to the state file, and remove undoes exactly that: fonts this script did not install are never
 touched. PowerPoint and other Office programs see a new font after they are restarted.
 
--FontDir, -RegistryFile and -State point everything at other places, which the tests use: with
--RegistryFile the registry values go to that JSON file instead of HKCU.
+-FontDir, -RegistryKey and -State point everything at other places, which the tests use: on Windows
+they run against a temporary key under HKCU that already holds values. -RegistryFile sends the
+registry values to a JSON file instead, for the tests on other systems.
 
 .EXAMPLE
 ./fonts.ps1 list
@@ -26,6 +27,7 @@ param(
     [string[]]$Font,
     [string]$Manifest = (Join-Path $PSScriptRoot 'fonts.json'),
     [string]$FontDir = (Join-Path $env:LOCALAPPDATA 'Microsoft\Windows\Fonts'),
+    [string]$RegistryKey = 'HKCU:\Software\Microsoft\Windows NT\CurrentVersion\Fonts',
     [string]$RegistryFile,
     [string]$State = (Join-Path $env:LOCALAPPDATA 'math-fonts\installed.json'),
     # A folder holding the downloads already (offline use and tests); missing files are downloaded.
@@ -33,7 +35,6 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$RegistryKey = 'HKCU:\Software\Microsoft\Windows NT\CurrentVersion\Fonts'
 
 function Read-Json([string]$Path, $Default) {
     if (Test-Path $Path) { Get-Content $Path -Raw | ConvertFrom-Json -AsHashtable } else { $Default }
@@ -57,8 +58,9 @@ function Set-Registered([string]$Name, $Value) {
     } elseif ($null -eq $Value) {
         Remove-ItemProperty $RegistryKey -Name $Name
     } else {
-        New-Item $RegistryKey -Force -ErrorAction SilentlyContinue | Out-Null
-        New-ItemProperty $RegistryKey -Name $Name -Value $Value -PropertyType String -Force | Out-Null
+        # New-Item -Force on an existing key replaces it and drops every value in it (#5).
+        if (-not (Test-Path $RegistryKey)) { New-Item $RegistryKey | Out-Null }
+        New-ItemProperty $RegistryKey -Name $Name -Value $Value -PropertyType String | Out-Null
     }
 }
 
@@ -116,7 +118,10 @@ switch ($Command) {
                 Write-Host "$($entry.name): already installed, left as it is"
                 continue
             }
-            if (-not $PSCmdlet.ShouldProcess("$($entry.name) $($entry.version) -> $target", 'install font')) { continue }
+            $where = if ($RegistryFile) { $RegistryFile } else { $RegistryKey }
+            $what = "$($entry.name) $($entry.version) -> $target; registry value '$value' in $where"
+            if (-not $RegistryFile -and -not (Test-Path $RegistryKey)) { $what += ' (key created)' }
+            if (-not $PSCmdlet.ShouldProcess($what, 'install font')) { continue }
             $work = New-Item -ItemType Directory (Join-Path ([IO.Path]::GetTempPath()) ([IO.Path]::GetRandomFileName()))
             try {
                 $file = Get-FontFile $entry $work.FullName
