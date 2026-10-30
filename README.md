@@ -4,6 +4,14 @@ Build PowerPoint decks from Python or a TOML file. Equations become native Offic
 stays editable in PowerPoint, or SVG pictures set by TeX; figures go in as SVG with a PNG
 fallback; PowerPoint exports the PDF with its fonts embedded.
 
+## Build pipeline at a glance
+
+![An editable presentation is assembled from slide definitions; PDF and slide images need an external office exporter.](docs/media/readme-overview.svg)
+
+An editable presentation is assembled from slide definitions; PDF and slide images need an external office exporter.
+
+Try the repository example after `uv sync`: `uv run slideforge build examples/textbook/deck.toml`. Its figure is generated with `examples/textbook/figures.py` first.
+
 ## Install
 
 From a clone of this repository, with [uv](https://docs.astral.sh/uv/):
