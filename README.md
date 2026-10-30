@@ -1,6 +1,10 @@
 # slideforge
 
-Build PowerPoint decks from Python or a TOML file. Equations become native Office math that
+Build PowerPoint decks from Python or a TOML file.
+
+![Workflow diagram showing source inputs, inspection steps and output files](docs/media/readme-workflow.svg)
+
+*Illustrative workflow (not a captured run). Follow the commands below to reproduce it.* Equations become native Office math that
 stays editable in PowerPoint, or SVG pictures set by TeX; figures go in as SVG with a PNG
 fallback; PowerPoint exports the PDF with its fonts embedded.
 
